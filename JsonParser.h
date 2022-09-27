@@ -1,3 +1,5 @@
+#ifndef JSONP_H
+#define JSONP_H
 #include <locale>  // std::isspace
 #include "BoostStore.h"
 #include <string>
@@ -23,10 +25,14 @@ class JSONP {
 	bool Parse(std::string thejson, BoostStore& output);
 	std::string Trim(std::string thejson);
 	bool iEquals(std::string str1, std::string str2);
+	void SetVerbose(bool);
 	
 	private:
 	bool ScanJsonArray(std::string thejson, JsonParserResult& result);
 	bool ScanJsonObjectPrimitive(std::string thejson, BoostStore& outstore);
 	bool ScanJsonObject(std::string thejson, BoostStore& outstore);
+	int verbose=0;
+	bool typechecking=false;
 	
 };
+#endif

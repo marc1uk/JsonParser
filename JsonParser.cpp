@@ -1,6 +1,10 @@
 #include "JsonParser.h"
 #include <iostream>
 
+void JSONP::SetVerbose(bool verb){
+	verbose = verb;
+}
+
 std::string JSONP::Trim(std::string thejson){
 	// discard leading whitespace
 	size_t pos=0;
@@ -24,7 +28,8 @@ bool JSONP::iEquals(std::string str1, std::string str2){
 
 
 bool JSONP::Parse(std::string thejson, BoostStore& output){
-	
+
+	if(verbose) std::cout<<"parsing '"<<thejson<<"'"<<std::endl;
 	// strip leading/trailing whitespace
 	thejson = Trim(thejson);
 	
@@ -91,7 +96,7 @@ bool JSONP::Parse(std::string thejson, BoostStore& output){
 }
 
 bool JSONP::ScanJsonArray(std::string thejson, JsonParserResult& result){
-std::cout<<"ScanJsonArray parsing '"<<thejson<<"'"<<std::endl;
+	if(verbose) std::cout<<"ScanJsonArray parsing '"<<thejson<<"'"<<std::endl;
 	// passed a json array
 	// should be sequence of comma delimited values
 	
@@ -127,7 +132,7 @@ std::cout<<"ScanJsonArray parsing '"<<thejson<<"'"<<std::endl;
 	// we can rule out some of these immediately based on characters in the json string
 	// for example if it contains a quote, we can rule out all elements being numbers, bools or nulls
 	if(thejson.find('"')!=std::string::npos){
-std::cout<<"found quote: can't be ints, floats, bools or nulls"<<std::endl;
+		if(verbose) std::cout<<"found quote: can't be ints, floats, bools or nulls"<<std::endl;
 		// not numeric, bool or null
 		all_ints=false;
 		all_floats=false;
@@ -137,12 +142,12 @@ std::cout<<"found quote: can't be ints, floats, bools or nulls"<<std::endl;
 	}
 	// conversely if it doesn't contain a quote char, it can't be all strings
 	if(thejson.find('"')==std::string::npos){
-std::cout<<"no quotes: can't be strings"<<std::endl;
+		if(verbose) std::cout<<"no quotes: can't be strings"<<std::endl;
 		all_strings=false;
 	}
 	// we can also rule out integers, bools and nulls by the presence of a '.' character
 	else if(thejson.find('.')!=std::string::npos){
-std::cout<<"found full stop: can't be ints, bools or nulls"<<std::endl;
+		if(verbose) std::cout<<"found full stop: can't be ints, bools or nulls"<<std::endl;
 		all_ints=false;
 		all_bools=false;
 		all_nulls=false;
@@ -150,27 +155,27 @@ std::cout<<"found full stop: can't be ints, bools or nulls"<<std::endl;
 	}
 	// rule out integers by anything other than digits and signs
 	if(thejson.find_first_not_of("01234567890+-, ")!=std::string::npos){
-std::cout<<"found something other than digits: can't be ints"<<std::endl;
+		if(verbose) std::cout<<"found something other than digits: can't be ints"<<std::endl;
 		all_ints=false;
 	}
 	// rule out doubles by anything other than numbers, signs and scientific notation characters
 	if(thejson.find_first_not_of("0123456789+-.Ee^*, ")!=std::string::npos){
-std::cout<<"found something other than SI characters: can't be floats"<<std::endl;
+		if(verbose) std::cout<<"found something other than SI characters: can't be floats"<<std::endl;
 		all_floats=false;
 	}
 	// rule out bools and nulls by finding anything other than the corresponding characters
 	if(thejson.find_first_not_of("tTrRuUeEfFaAlLsSeE, ")!=std::string::npos){
-std::cout<<"found characters not in true or false; can't be bools"<<std::endl;
+		if(verbose) std::cout<<"found characters not in true or false; can't be bools"<<std::endl;
 		all_bools=false;
 	}
 	if(thejson.find_first_not_of("nNuUlL, ")!=std::string::npos){
-std::cout<<"found characters not in null; can't be nulls"<<std::endl;
+		if(verbose) std::cout<<"found characters not in null; can't be nulls"<<std::endl;
 		all_nulls=false;
 	}
 	// we can identify arrays and objects by enclosers, but only if we've ruled out strings
 	// (otherwise these could potentially just be characters within the strings)
 	if(all_strings==false && thejson.substr(1,thejson.length()-2).find("{}[]:")!=std::string::npos){
-std::cout<<"can't be strings and has delimiters; must be array or object"<<std::endl;
+		if(verbose) std::cout<<"can't be strings and has delimiters; must be array or object"<<std::endl;
 		all_ints=false;
 		all_floats=false;
 		all_strings=false;
@@ -181,27 +186,35 @@ std::cout<<"can't be strings and has delimiters; must be array or object"<<std::
 	// ok, we have our best initial determination of element types
 	// the rest we'll have to figure out as we go.
 	
-std::cout<<"scanjsonarray performing parse loop on "<<thejson<<std::endl;
+	if(verbose) std::cout<<"scanjsonarray performing parse loop on "<<thejson<<std::endl;
 	
 	// scan through the array
 	size_t next_start=0;
 	size_t next_end=0;
 	while(true){
 		
-		std::cout<<"next_start="<<next_start<<", next_end="<<next_end<<std::endl;
+		if(verbose) std::cout<<"next_start="<<next_start<<", next_end="<<next_end<<std::endl;
 		if(next_end==std::string::npos || next_end==thejson.length()) break;
 		if(next_end!=0) next_start=next_end+1;
-		std::cout<<"new next_start="<<next_start<<", next_end="<<next_end<<std::endl;
+		if(verbose) std::cout<<"new next_start="<<next_start<<", next_end="<<next_end<<std::endl;
 		
 		// find the end of the next array entry
 		// note that as entry elements may be objects, nested arrays, or strings that contain commas,
 		// we can't just treat it as a comma-delimited list
 		bool in_string=false;
 		std::vector<char> delimiters;
-		std::cout<<"scanning remaining string: "<<thejson.substr(next_start,std::string::npos)<<std::endl;
+		if(verbose)	std::cout<<"scanning remaining string: "
+		                     <<thejson.substr(next_start,std::string::npos)<<std::endl;
 		for(next_end=next_start; next_end<thejson.length(); ++next_end){
-std::cout<<"next char: "<<thejson.at(next_end)<<" instring: "<<in_string<<", delimiters: ";
-for(int k=0; k<delimiters.size(); ++k){ if(k>0) std::cout<<", "; std::cout<<delimiters.at(k); } std::cout<<std::endl;
+			if(verbose){
+				std::cout<<"next char: "<<thejson.at(next_end)
+				         <<" instring: "<<in_string<<", delimiters: ";
+				for(int k=0; k<delimiters.size(); ++k){
+					if(k>0) std::cout<<", ";
+					std::cout<<delimiters.at(k);
+				}
+				std::cout<<std::endl;
+			}
 			char& nextchar = thejson.at(next_end);
 			if(in_string && nextchar=='"'){
 				in_string=false;
@@ -223,12 +236,12 @@ for(int k=0; k<delimiters.size(); ++k){ if(k>0) std::cout<<", "; std::cout<<deli
 				break;  // end of value
 			}
 		}
-		std::cout<<"broke"<<std::endl;
+		if(verbose) std::cout<<"broke"<<std::endl;
 		// extract entry
 		std::string tmp = thejson.substr(next_start, next_end-next_start);
-std::cout<<"next array element is "<<tmp<<std::endl;
+		if(verbose) std::cout<<"next array element is "<<tmp<<std::endl;
 		tmp=Trim(tmp);
-std::cout<<"trimmed is '"<<tmp<<"'"<<std::endl;
+		if(verbose) std::cout<<"trimmed is '"<<tmp<<"'"<<std::endl;
 		
 		if(tmp.front()=='{' || tmp.front()=='['){
 			// found an object or array
@@ -322,13 +335,13 @@ std::cout<<"trimmed is '"<<tmp<<"'"<<std::endl;
 		
 		// ok not an object or array, try to handle it as a simpler type
 		if(all_ints){
-std::cout<<"trying int"<<std::endl;
+			if(verbose) std::cout<<"trying int"<<std::endl;
 			// try to parse as integer, until we find something that fails
 			try {
 				size_t endpos=0;
 				int nextint = std::stoi(tmp,&endpos);
 				if(endpos!=tmp.length()) throw std::invalid_argument("extra chars");
-std::cout<<"match int"<<std::endl;
+				if(verbose) std::cout<<"match int"<<std::endl;
 				theints.push_back(nextint);
 				continue;
 			}
@@ -344,13 +357,13 @@ std::cout<<"match int"<<std::endl;
 			}
 		}
 		if(all_floats){
-std::cout<<"trying float"<<std::endl;
+			if(verbose) std::cout<<"trying float"<<std::endl;
 			// try to parse as a double until we find something that fails
 			try {
 				size_t endpos=0;
 				double nextfloat = std::stod(tmp,&endpos);
 				if(endpos!=tmp.length()) throw std::invalid_argument("extra chars");
-std::cout<<"match float"<<std::endl;
+				if(verbose) std::cout<<"match float"<<std::endl;
 				thefloats.push_back(nextfloat);
 				continue;
 			}
@@ -369,14 +382,14 @@ std::cout<<"match float"<<std::endl;
 			}
 		}
 		if(all_bools){
-std::cout<<"trying bool"<<std::endl;
+			if(verbose) std::cout<<"trying bool"<<std::endl;
 			if(iEquals(tmp,"TRUE")){
 				thebools.push_back(1);
-std::cout<<"match bool"<<std::endl;
+				if(verbose) std::cout<<"match bool"<<std::endl;
 				continue;
 			} else if(iEquals(tmp,"FALSE")){
 				thebools.push_back(0);
-std::cout<<"match bool"<<std::endl;
+				if(verbose) std::cout<<"match bool"<<std::endl;
 				continue;
 			} else {
 				// not all bools
@@ -394,10 +407,10 @@ std::cout<<"match bool"<<std::endl;
 			}
 		}
 		if(all_nulls){
-std::cout<<"trying null"<<std::endl;
+			if(verbose) std::cout<<"trying null"<<std::endl;
 			if(iEquals(tmp,"null")){
 				thenulls.resize(thenulls.size()+1);
-std::cout<<"match null"<<std::endl;
+				if(verbose) std::cout<<"match null"<<std::endl;
 				continue;
 			} else {
 				// not all nulls
@@ -416,11 +429,12 @@ std::cout<<"match null"<<std::endl;
 			}
 		}
 		if(all_strings){
-std::cout<<"trying string"<<std::endl;
+			if(verbose) std::cout<<"trying string"<<std::endl;
 			// check it looks like a string
 			if(tmp.length()>1 && tmp.front()=='"' && tmp.back()=='"'){
-				thestrings.push_back(tmp);
-std::cout<<"match string"<<std::endl;
+				// remove the enclosing quotes
+				thestrings.push_back(tmp.substr(1,tmp.length()-2));
+				if(verbose) std::cout<<"match string"<<std::endl;
 				continue;
 			} else {
 				// doesn't look like a json string. need to use stores
@@ -438,13 +452,13 @@ std::cout<<"match string"<<std::endl;
 			}
 		}
 		if(all_stores){
-std::cout<<"falling back to store"<<std::endl;
+			if(verbose) std::cout<<"falling back to store"<<std::endl;
 			// build a BoostStore to encapsulate this element,
 			// but note that it's not an object or array, so we're just gonna
 			// have to make a BoostStore entry of the correct primitive type
-			thestores.resize(thestores.size()+1);
+			thestores.resize(thestores.size()+1,BoostStore{typechecking});
 			bool ok = ScanJsonObjectPrimitive(tmp, thestores.back());
-std::cout<<"returned "<<ok<<std::endl;
+			if(verbose) std::cout<<"returned "<<ok<<std::endl;
 			if(!ok) return false;
 			continue;
 		}
@@ -471,9 +485,8 @@ std::cout<<"returned "<<ok<<std::endl;
 }
 
 bool JSONP::ScanJsonObjectPrimitive(std::string thejson, BoostStore& outstore){
-std::cout<<"ScanJsonObjectPrimitive scanning '"<<thejson<<"'"<<std::endl;
+	if(verbose) std::cout<<"ScanJsonObjectPrimitive scanning '"<<thejson<<"'"<<std::endl;
 	thejson=Trim(thejson);
-std::cout<<"trimmed: '"<<thejson<<"'"<<std::endl;
 	
 	if(thejson.front()=='{' || thejson.front()=='['){
 		std::cerr<<"Warning! ScanJsonObjectPrimitive called with object or array!"<<std::endl;
@@ -481,7 +494,7 @@ std::cout<<"trimmed: '"<<thejson<<"'"<<std::endl;
 	}
 	
 	try {
-std::cout<<"try int"<<std::endl;
+		if(verbose) std::cout<<"try int"<<std::endl;
 		size_t endpos=0;
 		int nextint = std::stoi(thejson,&endpos);
 		if(endpos!=thejson.length()) throw std::invalid_argument("extra chars");
@@ -490,10 +503,10 @@ std::cout<<"try int"<<std::endl;
 	}
 	catch(std::invalid_argument& e){
 		// not an int
-std::cout<<"not int"<<std::endl;
+		if(verbose) std::cout<<"not int"<<std::endl;
 	}
 	try {
-std::cout<<"try float"<<std::endl;
+		if(verbose) std::cout<<"try float"<<std::endl;
 		size_t endpos=0;
 		double nextfloat = std::stod(thejson,&endpos);
 		if(endpos!=thejson.length()) throw std::invalid_argument("extra chars");
@@ -501,33 +514,33 @@ std::cout<<"try float"<<std::endl;
 		return true;
 	}
 	catch(std::invalid_argument& e){
-std::cout<<"not float"<<std::endl;
-		// not a double
+		// not a float
+		if(verbose) std::cout<<"not float"<<std::endl;
 	}
-std::cout<<"try bool"<<std::endl;
+	if(verbose) std::cout<<"try bool"<<std::endl;
 	if(iEquals(thejson,"TRUE")){
 		bool val=true;
-std::cout<<"match bool"<<std::endl;
+		if(verbose) std::cout<<"match bool"<<std::endl;
 		outstore.Set("0",val);
 		return true;
 	}
 	if(iEquals(thejson,"FALSE")){
-std::cout<<"match bool"<<std::endl;
+		if(verbose) std::cout<<"match bool"<<std::endl;
 		bool val=false;
 		outstore.Set("0",val);
 		return true;
 	}
-std::cout<<"try null"<<std::endl;
+	if(verbose) std::cout<<"try null"<<std::endl;
 	if(iEquals(thejson,"null")){
-std::cout<<"match null"<<std::endl;
+		if(verbose) std::cout<<"match null"<<std::endl;
 		std::string val="";
 		outstore.Set("0",val);
 		return true;
 	}
-std::cout<<"try string"<<std::endl;
+	if(verbose) std::cout<<"try string"<<std::endl;
 	if(thejson.length()>1 && thejson.front()=='"' && thejson.back()=='"'){
-std::cout<<"match string"<<std::endl;
-		outstore.Set("0",thejson);
+		if(verbose) std::cout<<"match string"<<std::endl;
+		outstore.Set("0",thejson.substr(1,thejson.length()-2));
 		return true;
 	}
 	std::cerr<<"No handler for string "<<thejson<<" in ScanJsonObjectPrimitive!"<<std::endl;
@@ -537,7 +550,7 @@ std::cout<<"match string"<<std::endl;
 }
 
 bool JSONP::ScanJsonObject(std::string thejson, BoostStore& outstore){
-std::cout<<"ScanJsonObject scanning '"<<thejson<<"'"<<std::endl;
+	if(verbose) std::cout<<"ScanJsonObject scanning '"<<thejson<<"'"<<std::endl;
 	// passed a json object
 	// should be sequence of comma delimited key-value pairs,
 	// with string keys separated from values by colons
@@ -556,16 +569,24 @@ std::cout<<"ScanJsonObject scanning '"<<thejson<<"'"<<std::endl;
 		// we can't just treat it as a comma-delimited list
 		bool in_string=false;
 		std::vector<char> delimiters;
-		std::cout<<"scanning remaining string: "<<thejson.substr(next_start,std::string::npos)<<std::endl;
+		if(verbose) std::cout<<"scanning remaining string: "
+		                     <<thejson.substr(next_start,std::string::npos)<<std::endl;
 		for(next_end=next_start; next_end<thejson.length(); ++next_end){
-std::cout<<"key: "<<key<<", next char: "<<thejson.at(next_end)<<" instring: "<<in_string<<", delimiters: ";
-for(int k=0; k<delimiters.size(); ++k){ if(k>0) std::cout<<", "; std::cout<<delimiters.at(k); } std::cout<<std::endl;
+			if(verbose){
+				std::cout<<"key: "<<key<<", next char: "<<thejson.at(next_end)
+				         <<" instring: "<<in_string<<", delimiters: ";
+				for(int k=0; k<delimiters.size(); ++k){
+					if(k>0) std::cout<<", ";
+					std::cout<<delimiters.at(k);
+				}
+				std::cout<<std::endl;
+			}
 			char& nextchar = thejson.at(next_end);
 			if(in_string && nextchar=='"'){
 				in_string=false;
 				if(key && delimiters.empty()){
 					++next_end; // include the closing quote
-					std::cout<<"end of key at next_end="<<next_end<<std::endl;
+					if(verbose) std::cout<<"end of key at next_end="<<next_end<<std::endl;
 					break;   // end of key
 				}
 				continue;
@@ -596,22 +617,23 @@ for(int k=0; k<delimiters.size(); ++k){ if(k>0) std::cout<<", "; std::cout<<deli
 				}
 			}
 		}
-		std::cout<<"next element from "<<next_start<<" to "<<next_end<<std::endl;
+		if(verbose) std::cout<<"next element from "<<next_start<<" to "<<next_end<<std::endl;
 		// extract entry
 		std::string tmp = thejson.substr(next_start, next_end-next_start);
-std::cout<<"broke loop: '"<<tmp<<"'"<<std::endl;
+		if(verbose) std::cout<<"broke loop: '"<<tmp<<"'"<<std::endl;
 		tmp=Trim(tmp);
-std::cout<<"trimmed: '"<<tmp<<"'"<<std::endl;
 		
 		// if processing a key record it and continue to next loop
 		if(key){
 			next_key=tmp;
-std::cout<<"it key"<<std::endl;
+			if(verbose) std::cout<<"it key"<<std::endl;
 			// sanity checks, key should be a string
 			if(next_key.front()!='"' || next_key.back()!='"'){
 				std::cerr<<"next key '"<<next_key<<"' is not a string?"<<std::endl;
 				return false;
 			}
+			// strip them off for use as key in output BoostStore
+			next_key = next_key.substr(1,next_key.length()-2);
 			// swallow any whitespace and ':' separating key from value
 			int cc=0;
 			while(next_start!=thejson.length()){
@@ -627,56 +649,56 @@ std::cout<<"it key"<<std::endl;
 				return false;
 			}
 			--next_end; // backtrack one
-std::cout<<"sanity checks passed"<<std::endl;
+			if(verbose) std::cout<<"sanity checks passed"<<std::endl;
 		} else {
 			
-	std::cout<<"it value"<<std::endl;
+			if(verbose) std::cout<<"it value"<<std::endl;
 			// if not processing a key, parse the value
 			bool trytoparse=true;
 			if(trytoparse && tmp.front()=='{'){
 				// add the new element
-				BoostStore res{};
+				BoostStore res{typechecking};
 				bool ok =  ScanJsonObject(tmp.substr(1,tmp.length()-2), res);
 				if(!ok) return false;
 				outstore.Set(next_key,res);
 				trytoparse=false;
 			}
-if(trytoparse) std::cout<<"not object"<<std::endl;
+			if(verbose && trytoparse) std::cout<<"not object"<<std::endl;
 			if(trytoparse && tmp.front()=='['){
-std::cout<<"it array"<<std::endl;
+				if(verbose) std::cout<<"it array"<<std::endl;
 				// add the new element
 				JsonParserResult res;
 				bool ok =  ScanJsonArray(tmp.substr(1,tmp.length()-2), res);
-std::cout<<"parse array ret:"<<ok<<std::endl;
+				if(verbose) std::cout<<"parse array ret:"<<ok<<std::endl;
 				if(!ok || res.type==JsonParserResultType::undefined) return false;
 				switch (res.type){
 					case JsonParserResultType::ints: {
-std::cout<<"array was of ints"<<std::endl;
+						if(verbose) std::cout<<"array was of ints"<<std::endl;
 						outstore.Set(next_key,res.theints);
 						break;
 					}
 					case JsonParserResultType::floats: {
-std::cout<<"array was of floats"<<std::endl;
+						if(verbose) std::cout<<"array was of floats"<<std::endl;
 						outstore.Set(next_key,res.thefloats);
 						break;
 					}
 					case JsonParserResultType::strings: {
-std::cout<<"array was of strings"<<std::endl;
+						if(verbose) std::cout<<"array was of strings"<<std::endl;
 						outstore.Set(next_key,res.thestrings);
 						break;
 					}
 					case JsonParserResultType::bools: {
-std::cout<<"array was of bools"<<std::endl;
+						if(verbose) std::cout<<"array was of bools"<<std::endl;
 						outstore.Set(next_key,res.thebools);
 						break;
 					}
 					case JsonParserResultType::nulls: {
-std::cout<<"array was of nulls"<<std::endl;
+						if(verbose) std::cout<<"array was of nulls"<<std::endl;
 						outstore.Set(next_key,res.thenulls);
 						break;
 					}
 					case JsonParserResultType::stores: {
-std::cout<<"array was of stores"<<std::endl;
+						if(verbose) std::cout<<"array was of stores"<<std::endl;
 						outstore.Set(next_key,res.thestores);
 						break;
 					}
@@ -687,7 +709,7 @@ std::cout<<"array was of stores"<<std::endl;
 				}
 				trytoparse=false;
 			}
-if(trytoparse) std::cout<<"not array"<<std::endl;
+			if(verbose && trytoparse) std::cout<<"not array"<<std::endl;
 			
 			if(trytoparse){
 				try {
@@ -701,7 +723,7 @@ if(trytoparse) std::cout<<"not array"<<std::endl;
 					// not an int
 				}
 			}
-if(trytoparse) std::cout<<"not int"<<std::endl;
+			if(verbose && trytoparse) std::cout<<"not int"<<std::endl;
 			if(trytoparse){
 				try {
 					size_t endpos=0;
@@ -714,7 +736,7 @@ if(trytoparse) std::cout<<"not int"<<std::endl;
 					// not a double
 				}
 			}
-if(trytoparse) std::cout<<"not float"<<std::endl;
+			if(verbose && trytoparse) std::cout<<"not float"<<std::endl;
 			if(trytoparse){
 				if(iEquals(tmp,"TRUE")){
 					bool val=true;
@@ -726,7 +748,7 @@ if(trytoparse) std::cout<<"not float"<<std::endl;
 					trytoparse=false;
 				}
 			}
-if(trytoparse) std::cout<<"not bool"<<std::endl;
+			if(verbose && trytoparse) std::cout<<"not bool"<<std::endl;
 			if(trytoparse){
 				if(iEquals(tmp,"null")){
 					std::string nullstring;
@@ -734,16 +756,16 @@ if(trytoparse) std::cout<<"not bool"<<std::endl;
 					trytoparse=false;
 				}
 			}
-if(trytoparse) std::cout<<"not null"<<std::endl;
+			if(verbose && trytoparse) std::cout<<"not null"<<std::endl;
 			if(trytoparse){
 				if(tmp.length()>1 && tmp.front()=='"' && tmp.back()=='"'){
-					outstore.Set(next_key,tmp);
+					outstore.Set(next_key,tmp.substr(1,tmp.length()-2));
 					trytoparse=false;
 				}
 			}
-if(trytoparse) std::cout<<"not string"<<std::endl;
+			if(verbose && trytoparse) std::cout<<"not string"<<std::endl;
 			if(trytoparse){
-				BoostStore astore{};
+				BoostStore astore{typechecking};
 				bool ok = ScanJsonObjectPrimitive(tmp, astore);
 				if(!ok) return false;
 				outstore.Set(next_key,astore);
@@ -757,11 +779,11 @@ if(trytoparse) std::cout<<"not string"<<std::endl;
 		}
 		
 		key = !key;
-std::cout<<"updating iterators"<<std::endl;
+		if(verbose) std::cout<<"updating iterators"<<std::endl;
 		if(next_end==thejson.length()) break;
 		next_start=next_end+1;
 	}
-	std::cout<<"parsing object done"<<std::endl;
+	if(verbose) std::cout<<"parsing object done"<<std::endl;
 	
 	return true;
 	
